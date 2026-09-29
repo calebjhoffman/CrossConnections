@@ -1,0 +1,326 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String?
+  googleId     String?  @unique
+  firstName    String?
+  lastName     String?
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userMeta        UserMeta[]
+  verseHighlights UserVerseHighlight[]
+  savedVerses     UserSavedVerse[]
+  verseComments   VerseComment[]
+}
+
+model UserMeta {
+  id     String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  key   String
+  value String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@index([key])
+}
+
+model BibleEra {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  summary     String?
+  description String?
+
+  orderIndex  Int
+  dateLabel   String?
+  startYear   Int?
+  endYear     Int?
+
+  imageUrl    String?
+  status      String   @default("PUBLISHED")
+
+  events      BibleEvent[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BibleEvent {
+  id          String  @id @default(cuid())
+  title       String
+  slug        String  @unique
+  summary     String?
+  description String?
+
+  orderIndex Int
+  period     String?
+  era         String?
+  eraId       String?
+  eraRef      BibleEra? @relation(fields: [eraId], references: [id], onDelete: SetNull)
+
+  category    String?
+
+  startYear  Int?
+  endYear    Int?
+  dateLabel  String?
+
+  source      String @default("manual")
+  status      String @default("published")
+  createdById String?
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  passages BibleEventPassage[]
+
+  @@index([status])
+  @@index([source])
+  @@index([orderIndex])
+  @@index([period])
+  @@index([era])
+  @@index([eraId])
+  @@index([category])
+}
+
+model BibleEventPassage {
+  id String @id @default(cuid())
+
+  eventId String
+  event   BibleEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  book         String
+  chapterStart Int
+  verseStart   Int
+  chapterEnd   Int?
+  verseEnd     Int?
+
+  label String? // "Genesis 1:1–2:3"
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([book, chapterStart])
+}
+
+model BibleContextTopic {
+  id       String @id @default(cuid())
+  title    String
+  slug     String @unique
+  category String
+  summary  String
+  details  String?
+
+  source      String @default("manual")
+  status      String @default("published")
+  createdById String?
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  verseLinks BibleVerseContext[]
+
+  @@index([category])
+  @@index([status])
+  @@index([source])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model BibleVerseContext {
+  id String @id @default(cuid())
+
+  book    String
+  chapter Int
+  verse   Int
+
+  topicId String
+  topic   BibleContextTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  note String?
+
+  source      String @default("manual")
+  status      String @default("published")
+  createdById String?
+  updatedById String?
+
+  createdAt DateTime @default(now())
+
+  @@index([book, chapter, verse])
+  @@index([topicId])
+  @@index([status])
+  @@index([source])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model BibleTranslation {
+  id        String  @id @default(cuid())
+  name      String
+  code      String  @unique
+  language  String  @default("en")
+  source    String?
+  isDefault Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  verses BibleVerse[]
+}
+
+model BibleBook {
+  id        String @id @default(cuid())
+  name      String
+  slug      String @unique
+  testament String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  verses          BibleVerse[]
+  sectionHeadings BibleSectionHeading[]
+}
+
+model BibleVerse {
+  id String @id @default(cuid())
+
+  translationId String
+  translation   BibleTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+
+  bookId String
+  book   BibleBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  chapter Int
+  verse   Int
+  text    String
+
+  paragraphIndex Int?
+  paragraphStart Boolean @default(false)
+  blockType      String?
+  blockLevel     Int?
+  headingBefore  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userHighlights UserVerseHighlight[]
+  savedByUsers   UserSavedVerse[]
+  comments       VerseComment[]
+
+  @@unique([translationId, bookId, chapter, verse])
+  @@index([bookId, chapter])
+  @@index([translationId, bookId, chapter])
+}
+
+model UserVerseHighlight {
+  id String @id @default(cuid())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  verseId String
+  verse   BibleVerse @relation(fields: [verseId], references: [id], onDelete: Cascade)
+
+  color String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, verseId])
+  @@index([userId])
+  @@index([verseId])
+}
+
+model UserSavedVerse {
+  id String @id @default(cuid())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  verseId String
+  verse   BibleVerse @relation(fields: [verseId], references: [id], onDelete: Cascade)
+
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, verseId])
+  @@index([userId])
+  @@index([verseId])
+}
+
+model VerseComment {
+  id String @id @default(cuid())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  verseId String
+  verse   BibleVerse @relation(fields: [verseId], references: [id], onDelete: Cascade)
+
+  body String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([verseId])
+  @@index([userId])
+  @@index([verseId, createdAt])
+}
+
+model BibleSectionHeading {
+  id String @id @default(cuid())
+
+  bookId String
+  book   BibleBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  chapter Int
+
+  verseStart Int
+  verseEnd   Int?
+
+  title   String
+  summary String?
+  type    String @default("section")
+  source  String @default("manual")
+  status  String @default("published")
+
+  createdById String?
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookId, chapter])
+  @@index([bookId, chapter, verseStart])
+  @@index([status])
+  @@index([source])
+  @@index([createdById])
+  @@index([updatedById])
+}

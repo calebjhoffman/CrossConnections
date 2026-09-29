@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:16
+    container_name: cross_connections_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cross_connections
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: cross_connections_pgadmin
+    restart: always
+    depends_on:
+      - db
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  server:
+    build: ./server
+    container_name: cross_connections_server
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    working_dir: /app
+    env_file:
+      - ./server/.env
+    command: ["sh", "./docker-entrypoint.sh", "npm", "run", "dev"]
+
+  client:
+    build: ./client
+    container_name: cross_connections_client
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    working_dir: /app
+    command: ["npm", "run", "dev"]
+
+volumes:
+  pgdata:
+  pgadmin_data:
