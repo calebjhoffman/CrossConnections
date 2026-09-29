@@ -50,6 +50,7 @@ export default function TimelinePage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState(null)
 
   async function loadEvents() {
     try {
@@ -165,8 +166,6 @@ export default function TimelinePage() {
             sx={{
               overflow: 'hidden',
               borderRadius: 1,
-              border: '1px solid',
-              borderColor: isOpen ? 'primary.main' : 'divider',
             }}
           >
             <Box
@@ -208,16 +207,23 @@ export default function TimelinePage() {
             <Collapse in={isOpen}>
               <Stack spacing={1.5} sx={{ p: 2 }}>
                 {era.events?.map((event) => (
-                  <Paper
-                    key={event.id}
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      borderRadius: 3,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                    }}
-                  >
+              <Paper
+                key={event.id}
+                elevation={0}
+                onClick={() => setSelectedEvent(event)}
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s ease, border-color 0.15s ease',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderColor: 'primary.main',
+                  },
+                }}
+              >
                     <Stack spacing={1}>
                       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                         <Chip label={event.orderIndex} color="primary" size="small" sx={{ fontWeight: 700 }} />
@@ -313,6 +319,90 @@ export default function TimelinePage() {
             </Stack>
           </Stack>
         </Box>
+      </Drawer>
+      <Drawer
+        anchor="bottom"
+        open={Boolean(selectedEvent)}
+        onClose={() => setSelectedEvent(null)}
+        slotProps={{
+          paper: {
+            sx: {
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              maxHeight: '75vh',
+            },
+          },
+        }}
+      >
+        {selectedEvent && (
+          <Box sx={{ p: 3 }}>
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {selectedEvent.dateLabel && (
+                  <Chip
+                    label={selectedEvent.dateLabel}
+                    size="small"
+                    color="primary"
+                  />
+                )}
+
+                {selectedEvent.category && (
+                  <Chip
+                    label={selectedEvent.category}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Stack>
+
+              <Typography variant="h5" fontWeight={900}>
+                {selectedEvent.title}
+              </Typography>
+
+              {selectedEvent.summary && (
+                <Typography color="text.secondary">
+                  {selectedEvent.summary}
+                </Typography>
+              )}
+
+              {selectedEvent.description && (
+                <Typography>
+                  {selectedEvent.description}
+                </Typography>
+              )}
+
+              {selectedEvent.passages?.length > 0 && (
+                <Box>
+                  <Typography
+                    variant="overline"
+                    color="text.secondary"
+                    fontWeight={800}
+                  >
+                    Scripture
+                  </Typography>
+
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    flexWrap="wrap"
+                    sx={{ mt: 1 }}
+                  >
+                    {selectedEvent.passages.map((passage) => (
+                      <Chip
+                        key={passage.id}
+                        label={
+                          passage.label ||
+                          `${passage.book} ${passage.chapterStart}:${passage.verseStart}`
+                        }
+                        variant="outlined"
+                      />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
+          </Box>
+        )}
       </Drawer>
     </Stack>
   )
